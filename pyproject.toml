@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avlink"
+version = "0.1.0"
+description = "Record linkage across NTSB, ASN and Aviation Herald safety reports"
+requires-python = ">=3.10"
+dependencies = ["duckdb>=1.3", "pandas>=2.1", "pyarrow>=14", "requests>=2.31"]
+
+[project.optional-dependencies]
+splink = ["splink>=4.0"]
+llm = ["anthropic>=0.40"]
+s3 = ["boto3>=1.34"]
+dev = ["pytest>=8", "splink>=4.0", "boto3>=1.34", "moto[s3]>=5"]
+
+[project.scripts]
+avlink = "avlink.pipeline:main"
+
+[tool.setuptools.packages.find]
+include = ["avlink*"]
