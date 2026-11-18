@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import pytest
 
-from avlink import adjudicate, cluster, deterministic, evaluate, features, probabilistic
+from avlink import wide, adjudicate, cluster, deterministic, evaluate, features, probabilistic
 from avlink.sources import asn, avherald, ntsb
 from avlink.store import Warehouse
 
@@ -93,3 +93,21 @@ def test_eval_and_features(built, tmp_path):
     df = features.export(wh, tmp_path / "f.parquet")
     assert df["unified_event_id"].is_unique
     assert {"in_ntsb", "in_asn", "in_avherald", "min_link_score"} <= set(df.columns)
+
+
+def test_wide_outer_join(built):
+    wh, syn = built
+    df = wide.build(wh)
+    # every record of every source appears at least once (outer join loses nothing)
+    for src, col in (("avherald", "avh_source_id"), ("asn", "asn_source_id"), ("ntsb", "ntsb_source_id")):
+        ids = set(wh.records(f"source = '{src}'")["source_id"])
+        assert ids <= set(df[col].dropna()), src
+    # co-occurring ids in a row must be truly the same event
+    bad = 0
+    for _, r in df.iterrows():
+        keys = [(s, r[c]) for s, c in (("avherald", "avh_source_id"), ("asn", "asn_source_id"), ("ntsb", "ntsb_source_id"))
+                if isinstance(r[c], str)]
+        if len({syn.truth.get(k) for k in keys}) > 1:
+            bad += 1
+    assert bad / len(df) < 0.01
+    assert {"AVH+ASN+NTSB", "ASN+NTSB", "AVH+ASN", "AVH"} <= set(df["match_pattern"])

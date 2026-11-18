@@ -16,6 +16,7 @@ Typical first run
   avlink labels    --db avlink.duckdb  labels_done.csv
   avlink evaluate  --db avlink.duckdb
   avlink features  --db avlink.duckdb  events_features.parquet
+  avlink wide      --db avlink.duckdb  avh_asn_ntsb.parquet      # outer join, AvHerald → ASN → NTSB
 """
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ from datetime import date
 
 import pandas as pd
 
-from . import adjudicate, cluster, deterministic, evaluate, features, probabilistic, reference, s3
+from . import adjudicate, cluster, deterministic, evaluate, features, probabilistic, reference, s3, wide
 from .sources import asn, avherald, faa_registry, ntsb
 from .store import Warehouse
 
@@ -69,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("review"); p.add_argument("out_csv")
     p = sub.add_parser("features"); p.add_argument("out")
     sub.add_parser("stats")
+    p = sub.add_parser("wide", help="AvHerald ⟗ ASN ⟗ NTSB outer-join export"); p.add_argument("out")
     p = sub.add_parser("s3", help="ingest every supported object under an s3:// prefix")
     p.add_argument("source", choices=["ntsb", "asn", "avherald"]); p.add_argument("uri")
     p.add_argument("--pattern", default="*", help="filename glob, e.g. '*.jsonl'")
@@ -130,6 +132,10 @@ def main(argv: list[str] | None = None) -> int:
                   f"{len(rep.skipped)} skipped, {len(rep.failed)} failed")
             for k, err in rep.failed[:20]:
                 print(f"  FAILED {k}: {err}")
+        elif a.cmd == "wide":
+            df = wide.export(wh, a.out)
+            print(wide.summary(df).to_string(index=False))
+            print(f"{len(df)} rows → {a.out}")
         elif a.cmd == "stats":
             print(wh.stats().to_string(index=False))
             print(wh.con.execute("SELECT method, status, count(*) n FROM record_link GROUP BY ALL ORDER BY 1,2").df().to_string(index=False))

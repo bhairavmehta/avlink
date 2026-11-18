@@ -26,6 +26,7 @@ avlink --db av.duckdb cluster
 avlink --db av.duckdb sample todo.csv   → label is_match 1/0 →   avlink labels done.csv
 avlink --db av.duckdb evaluate
 avlink --db av.duckdb features events.parquet
+avlink --db av.duckdb wide avh_asn_ntsb.parquet         # AvHerald ⟗ ASN ⟗ NTSB, one row per match
 ```
 
 ## Linkage tiers
